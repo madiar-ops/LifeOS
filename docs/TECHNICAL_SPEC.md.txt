@@ -1,0 +1,483 @@
+# TECHNICAL SPECIFICATION
+
+Project
+
+LifeOS
+
+Version
+
+1.0
+
+---
+
+# 1 SYSTEM OVERVIEW
+
+LifeOS — Full Stack AI SaaS.
+
+Архитектура состоит из трех сервисов.
+
+React Frontend
+
+↓
+
+ASP.NET Core API
+
+↓
+
+FastAPI AI Service
+
+↓
+
+PyTorch
+
+↓
+
+PostgreSQL
+
+↓
+
+Firebase Storage
+
+---
+
+# 2 PROJECT STRUCTURE
+
+LifeOS
+
+backend/
+
+frontend/
+
+ai-service/
+
+docs/
+
+README.md
+
+docker-compose.yml
+
+.env.example
+
+---
+
+# 3 FRONTEND
+
+React
+
+TailwindCSS
+
+Axios
+
+React Router
+
+Context API
+
+Структура
+
+pages/
+
+components/
+
+layouts/
+
+services/
+
+hooks/
+
+contexts/
+
+utils/
+
+assets/
+
+types/
+
+---
+
+# 4 BACKEND
+
+ASP.NET Core Web API
+
+Controllers
+
+Services
+
+Repositories
+
+Interfaces
+
+Entities
+
+DTO
+
+Configurations
+
+Middleware
+
+Validators
+
+Extensions
+
+Data
+
+Migrations
+
+---
+
+# 5 AI SERVICE
+
+FastAPI
+
+routers/
+
+services/
+
+schemas/
+
+training/
+
+models/
+
+datasets/
+
+utils/
+
+config/
+
+---
+
+# 6 DATABASE
+
+PostgreSQL
+
+Основные таблицы
+
+Users
+
+Goals
+
+Tasks
+
+Expenses
+
+StudyMaterials
+
+StudyNotes
+
+Quizzes
+
+CareerProfiles
+
+HealthLogs
+
+Recommendations
+
+Files
+
+AIHistory
+
+RefreshTokens
+
+---
+
+# 7 USER ENTITY
+
+Id
+
+Name
+
+Surname
+
+Email
+
+PasswordHash
+
+Avatar
+
+Role
+
+CreatedAt
+
+UpdatedAt
+
+---
+
+# 8 GOALS
+
+Id
+
+UserId
+
+Title
+
+Description
+
+Status
+
+Priority
+
+Deadline
+
+---
+
+# 9 TASKS
+
+Id
+
+GoalId
+
+Title
+
+Completed
+
+Deadline
+
+CreatedAt
+
+---
+
+# 10 EXPENSES
+
+Id
+
+UserId
+
+Category
+
+Amount
+
+Currency
+
+Date
+
+Description
+
+---
+
+# 11 HEALTH
+
+Id
+
+UserId
+
+Weight
+
+SleepHours
+
+Mood
+
+Water
+
+Steps
+
+CreatedAt
+
+---
+
+# 12 STUDY
+
+Id
+
+UserId
+
+PdfFile
+
+Summary
+
+Quiz
+
+Score
+
+---
+
+# 13 CAREER
+
+Id
+
+UserId
+
+Resume
+
+Skills
+
+DesiredPosition
+
+AIReview
+
+---
+
+# 14 FILE STORAGE
+
+Firebase Storage
+
+Хранит
+
+PDF
+
+Resume
+
+Images
+
+Avatars
+
+Documents
+
+---
+
+# 15 AUTH
+
+JWT
+
+Refresh Token
+
+Role Based Authorization
+
+Password Hash
+
+---
+
+# 16 API MODULES
+
+/auth
+
+/dashboard
+
+/users
+
+/tasks
+
+/goals
+
+/study
+
+/finance
+
+/career
+
+/health
+
+/files
+
+/ai
+
+/admin
+
+---
+
+# 17 AI ENDPOINTS
+
+POST /predict
+
+POST /recommend
+
+POST /study-summary
+
+POST /resume-analysis
+
+POST /finance-analysis
+
+POST /health-analysis
+
+---
+
+# 18 DASHBOARD
+
+Главная страница показывает
+
+Количество задач
+
+Количество целей
+
+Расходы
+
+Доходы
+
+Последние документы
+
+AI рекомендации
+
+Прогресс целей
+
+Статистику
+
+---
+
+# 19 AI
+
+Использует
+
+PyTorch
+
+NumPy
+
+Pandas
+
+Scikit Learn
+
+Модель должна обучаться заранее.
+
+FastAPI только делает inference.
+
+---
+
+# 20 SECURITY
+
+JWT
+
+HTTPS
+
+Password Hash
+
+Validation
+
+Authorization
+
+Role Check
+
+Input Validation
+
+---
+
+# 21 DEPLOYMENT
+
+Frontend
+
+Vercel
+
+Backend
+
+Render
+
+AI
+
+Render
+
+Database
+
+Neon
+
+Storage
+
+Firebase
+
+---
+
+# 22 QUALITY
+
+SOLID
+
+Clean Architecture
+
+Repository Pattern
+
+DTO
+
+Dependency Injection
+
+Swagger
+
+Validation
+
+Logging
+
+Global Exception Middleware

@@ -16,6 +16,25 @@
 
 # Mono auto generated files
 mono_crash.*
+# .NET
+backend/**/bin/
+backend/**/obj/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Python
+ai-service/**/__pycache__/
+ai-service/venv/
+ai-service/**/*.pyc
+
+# Общее
+.env
+.env.local
+*.log
+.vs/
+.vscode/*.local.json
 
 # Build results
 [Dd]ebug/
