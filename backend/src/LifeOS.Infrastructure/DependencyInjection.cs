@@ -1,0 +1,70 @@
+using LifeOS.Application.Interfaces.Auth;
+using LifeOS.Application.Interfaces.Infrastructure;
+using LifeOS.Application.Interfaces.Repositories;
+using LifeOS.Infrastructure.Auth;
+using LifeOS.Infrastructure.Data;
+using LifeOS.Infrastructure.Data.Interceptors;
+using LifeOS.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace LifeOS.Infrastructure;
+
+/// <summary>
+/// Регистрация инфраструктуры: БД, репозитории, вспомогательные сервисы.
+/// Слой API не знает ни про EF Core, ни про Npgsql — только про этот метод.
+/// </summary>
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException(
+                "Строка подключения 'ConnectionStrings:DefaultConnection' не задана. " +
+                "Задайте её в user-secrets (dev) или в переменных окружения (prod).");
+
+        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        services.AddScoped<AuditableEntityInterceptor>();
+
+        services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+        {
+            options.UseNpgsql(connectionString, npgsql =>
+            {
+                npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+
+                // Neon — облачная БД: сетевые сбои штатны, поэтому включаем retry.
+                npgsql.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorCodesToAdd: null);
+            });
+
+            options.AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>());
+
+            if (environment.IsDevelopment())
+            {
+                // Значения параметров в логах — только в dev: в проде это утечка данных.
+                options.EnableDetailedErrors();
+                options.EnableSensitiveDataLogging();
+            }
+        });
+
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
+        // Auth: обе реализации не хранят состояние, поэтому Singleton.
+        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        services.AddHealthChecks().AddDbContextCheck<AppDbContext>("postgres");
+
+        return services;
+    }
+}

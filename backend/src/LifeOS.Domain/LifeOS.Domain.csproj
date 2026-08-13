@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LifeOS.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Ядро домена намеренно НЕ имеет ни одной внешней зависимости.
+    Это и есть главный признак Clean Architecture: бизнес-модель
+    не знает про EF Core, ASP.NET, HTTP и базу данных.
+  -->
+
+</Project>
