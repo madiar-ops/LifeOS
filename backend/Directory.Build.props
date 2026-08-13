@@ -1,0 +1,17 @@
+<Project>
+  <!--
+    Общие настройки для всех проектов Solution.
+    Держим их в одном месте, чтобы не дублировать в каждом .csproj
+    и не получить расхождение версий языка/фреймворка между слоями.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 1591: не требуем XML-комментарий у каждого публичного члена. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+</Project>

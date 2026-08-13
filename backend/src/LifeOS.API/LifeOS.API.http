@@ -1,0 +1,267 @@
+@LifeOS_HostAddress = https://localhost:7001
+
+### 1. Регистрация — ожидаем 200 и пару токенов
+POST {{LifeOS_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Madiar",
+  "surname": "Test",
+  "email": "madiar@lifeos.dev",
+  "password": "Password123"
+}
+
+### 2. Повтор той же регистрации — ожидаем 409 (это и есть проверка
+###    уникального индекса на Users.Email)
+POST {{LifeOS_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Madiar",
+  "surname": "Test",
+  "email": "madiar@lifeos.dev",
+  "password": "Password123"
+}
+
+### 3. Слабый пароль — ожидаем 400 со списком ошибок по полям
+POST {{LifeOS_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "A",
+  "surname": "B",
+  "email": "не-email",
+  "password": "123"
+}
+
+### 4. Вход — ожидаем 200
+POST {{LifeOS_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "madiar@lifeos.dev",
+  "password": "Password123"
+}
+
+### 5. Неверный пароль — ожидаем 400 с общим сообщением
+###    (не должно быть видно, существует ли email)
+POST {{LifeOS_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "madiar@lifeos.dev",
+  "password": "WrongPassword1"
+}
+
+### 6. Профиль без токена — ожидаем 401
+GET {{LifeOS_HostAddress}}/api/auth/me
+
+### 7. Профиль с токеном — ожидаем 200
+###    Подставь accessToken из шага 4.
+GET {{LifeOS_HostAddress}}/api/auth/me
+Authorization: Bearer ВСТАВЬ_ACCESS_TOKEN
+
+### 8. Обновление токенов — ожидаем 200 и НОВУЮ пару
+POST {{LifeOS_HostAddress}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "ВСТАВЬ_REFRESH_TOKEN"
+}
+
+### 9. Повторное использование ТОГО ЖЕ refresh-токена из шага 8 —
+###    ожидаем 400 с кодом auth.token_reuse_detected.
+###    Это демонстрация защиты от кражи токена.
+POST {{LifeOS_HostAddress}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "ТОТ_ЖЕ_REFRESH_TOKEN_ЧТО_В_ШАГЕ_8"
+}
+
+### 10. Выход — ожидаем 204
+POST {{LifeOS_HostAddress}}/api/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "ВСТАВЬ_АКТУАЛЬНЫЙ_REFRESH_TOKEN"
+}
+
+###############################################################
+# ФАЗА 3 — CRUD. Сначала выполни шаг 4 (login) и подставь токен.
+###############################################################
+
+@token = ВСТАВЬ_ACCESS_TOKEN
+
+### 11. Проверка живости (маршрут переехал с /api/health на /api/ping)
+GET {{LifeOS_HostAddress}}/api/ping
+
+### 12. Список целей без токена — ожидаем 401
+GET {{LifeOS_HostAddress}}/api/goals
+
+### 13. Создание цели — ожидаем 201 + заголовок Location
+POST {{LifeOS_HostAddress}}/api/goals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Сдать дипломный проект",
+  "description": "LifeOS — Full Stack AI SaaS",
+  "status": "InProgress",
+  "priority": "High",
+  "deadline": "2026-06-01T00:00:00Z"
+}
+
+### 14. Недопустимое значение enum — ожидаем 400 со словарём ошибок
+POST {{LifeOS_HostAddress}}/api/goals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "status": "НеСуществует",
+  "priority": "High"
+}
+
+### 15. Список целей с фильтрами и пагинацией
+GET {{LifeOS_HostAddress}}/api/goals?status=InProgress&pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### 16. Чужая цель — ожидаем 404 (не 403: иначе можно перебирать чужие Id)
+GET {{LifeOS_HostAddress}}/api/goals/00000000-0000-0000-0000-000000000001
+Authorization: Bearer {{token}}
+
+### 17. Создание задачи, привязанной к цели
+POST {{LifeOS_HostAddress}}/api/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Закончить Фазу 3",
+  "goalId": "ВСТАВЬ_GOAL_ID",
+  "deadline": "2026-03-01T00:00:00Z"
+}
+
+### 18. Самостоятельная задача без цели — GoalId необязателен
+POST {{LifeOS_HostAddress}}/api/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Купить кофе"
+}
+
+### 19. Переключение статуса выполнения
+PATCH {{LifeOS_HostAddress}}/api/tasks/ВСТАВЬ_TASK_ID/complete
+Authorization: Bearer {{token}}
+
+### 20. Удаление цели → у её задач GoalId станет NULL, задачи выживут
+DELETE {{LifeOS_HostAddress}}/api/goals/ВСТАВЬ_GOAL_ID
+Authorization: Bearer {{token}}
+
+### 21. Проверка: задача из шага 17 жива, goalId = null
+GET {{LifeOS_HostAddress}}/api/tasks
+Authorization: Bearer {{token}}
+
+### 22. Доход
+POST {{LifeOS_HostAddress}}/api/finance/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "Income",
+  "category": "Стипендия",
+  "amount": 120000,
+  "currency": "KZT",
+  "date": "2026-08-01",
+  "description": "Августовская стипендия"
+}
+
+### 23. Расход
+POST {{LifeOS_HostAddress}}/api/finance/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "category": "Еда",
+  "amount": 35000,
+  "currency": "KZT",
+  "date": "2026-08-05"
+}
+
+### 24. Отрицательная сумма — ожидаем 400
+POST {{LifeOS_HostAddress}}/api/finance/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "Expense",
+  "category": "Еда",
+  "amount": -500,
+  "currency": "ТЕНГЕ",
+  "date": "2026-08-05"
+}
+
+### 25. Сводка за месяц: доходы, расходы, баланс, разбивка по категориям
+GET {{LifeOS_HostAddress}}/api/finance/summary?from=2026-08-01&to=2026-08-31
+Authorization: Bearer {{token}}
+
+### 26. Запись здоровья
+POST {{LifeOS_HostAddress}}/api/health/logs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "date": "2026-08-11",
+  "weight": 72.5,
+  "sleepHours": 7.5,
+  "mood": "Good",
+  "waterMl": 2000,
+  "steps": 8400
+}
+
+### 27. Повтор той же даты — ожидаем 409 (уникальный индекс UserId+Date)
+POST {{LifeOS_HostAddress}}/api/health/logs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "date": "2026-08-11",
+  "mood": "Neutral",
+  "waterMl": 1000,
+  "steps": 3000
+}
+
+### 28. Вес 700 кг — ожидаем 400 (отсечение опечатки)
+POST {{LifeOS_HostAddress}}/api/health/logs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "date": "2026-08-10",
+  "weight": 700,
+  "mood": "Good",
+  "waterMl": 2000,
+  "steps": 5000
+}
+
+### 29. Изменение профиля
+PUT {{LifeOS_HostAddress}}/api/users/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Madiar",
+  "surname": "Updated"
+}
+
+### 30. Смена пароля → после этого все refresh-токены отзываются
+PUT {{LifeOS_HostAddress}}/api/users/password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password123",
+  "newPassword": "NewPassword456"
+}
