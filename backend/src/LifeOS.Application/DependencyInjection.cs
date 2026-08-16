@@ -27,6 +27,12 @@ public static class DependencyInjection
             .Validate(s => s.RefreshTokenDays > 0, "Jwt:RefreshTokenDays должен быть больше нуля.")
             .ValidateOnStart();
 
+        services.AddOptions<FileStorageSettings>()
+            .Bind(configuration.GetSection(FileStorageSettings.SectionName))
+            .Validate(s => s.MaxFileSizeMb is > 0 and <= 100,
+                "FileStorage:MaxFileSizeMb должен быть в диапазоне 1–100.")
+            .ValidateOnStart();
+
         var assembly = typeof(DependencyInjection).Assembly;
 
         services.AddValidatorsFromAssembly(assembly);
@@ -39,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<ITaskService, TaskService>();
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<IHealthLogService, HealthLogService>();
+        services.AddScoped<IFileService, FileService>();
 
         return services;
     }
