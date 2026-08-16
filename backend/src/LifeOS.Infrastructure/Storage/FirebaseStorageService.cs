@@ -72,6 +72,20 @@ public class FirebaseStorageService : IFileStorageService
         return new StorageUploadResult(url, storagePath);
     }
 
+    public async Task<Stream> DownloadAsync(string storagePath, CancellationToken cancellationToken = default)
+    {
+        // Скачиваем в память: файлы ограничены 10 МБ, а поток должен быть
+        // перечитываемым — PDF-парсер требует возможности перемещаться по нему.
+        var buffer = new MemoryStream();
+
+        await _client.DownloadObjectAsync(
+            _settings.Bucket, storagePath, buffer,
+            options: null, cancellationToken: cancellationToken);
+
+        buffer.Position = 0;
+        return buffer;
+    }
+
     public async Task DeleteAsync(string storagePath, CancellationToken cancellationToken = default)
     {
         try
