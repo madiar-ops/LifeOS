@@ -321,3 +321,136 @@ Authorization: Bearer {{token}}
 ### 41. Удаление файла
 DELETE {{LifeOS_HostAddress}}/api/files/ВСТАВЬ_FILE_ID
 Authorization: Bearer {{token}}
+
+###############################################################
+# ФАЗА 6 — AI-модули. Требуется ЗАПУЩЕННЫЙ ai-service
+# (uvicorn app.main:app --port 8000) и совпадающий ключ:
+# AiService:InternalApiKey (backend) == INTERNAL_API_KEY (ai-service)
+###############################################################
+
+### 42. Проверка, что AI-сервис поднят и модели загружены
+GET http://localhost:8000/health
+
+### 43. Финансовый прогноз (нужны транзакции из шагов 22-23)
+GET {{LifeOS_HostAddress}}/api/finance/analysis?monthsBack=6
+Authorization: Bearer {{token}}
+
+### 44. Прогноз без данных — ожидаем 400 finance.no_data
+GET {{LifeOS_HostAddress}}/api/finance/analysis?monthsBack=1&currency=USD
+Authorization: Bearer {{token}}
+
+### 45. Анализ здоровья (нужна запись из шага 26)
+GET {{LifeOS_HostAddress}}/api/health/analysis?daysBack=30
+Authorization: Bearer {{token}}
+
+### 46. Проверка ленты рекомендаций — там появились записи после 43 и 45
+GET {{LifeOS_HostAddress}}/api/recommendations
+Authorization: Bearer {{token}}
+
+### 47. Аудит вызовов AI (payload наружу не отдаётся)
+GET {{LifeOS_HostAddress}}/api/ai/history
+Authorization: Bearer {{token}}
+
+### 48. Создание учебного материала из PDF
+###     Сначала загрузи PDF: POST /api/files/upload?module=Study (шаг 31)
+POST {{LifeOS_HostAddress}}/api/study/materials
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fileId": "ВСТАВЬ_FILE_ID",
+  "title": "Конспект по машинному обучению"
+}
+
+### 49. Повторное использование того же файла — ожидаем 409
+POST {{LifeOS_HostAddress}}/api/study/materials
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fileId": "ТОТ_ЖЕ_FILE_ID",
+  "title": "Дубликат"
+}
+
+### 50. Генерация конспекта через AI
+POST {{LifeOS_HostAddress}}/api/study/materials/ВСТАВЬ_MATERIAL_ID/summarize
+Authorization: Bearer {{token}}
+
+### 51. Материал теперь содержит summary
+GET {{LifeOS_HostAddress}}/api/study/materials/ВСТАВЬ_MATERIAL_ID
+Authorization: Bearer {{token}}
+
+### 52. Генерация теста (без ключа LLM в ai-service ожидаем 400 study.quiz_unavailable)
+POST {{LifeOS_HostAddress}}/api/study/quizzes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "studyMaterialId": "ВСТАВЬ_MATERIAL_ID",
+  "questionCount": 5
+}
+
+### 53. Тест по Id — правильные ответы НЕ возвращаются
+GET {{LifeOS_HostAddress}}/api/study/quizzes/ВСТАВЬ_QUIZ_ID
+Authorization: Bearer {{token}}
+
+### 54. Отправка ответов — оценка считается на сервере
+POST {{LifeOS_HostAddress}}/api/study/quizzes/ВСТАВЬ_QUIZ_ID/submit
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "answers": [0, 1, 2, 0, 3]
+}
+
+### 55. Неверное количество ответов — ожидаем 400
+POST {{LifeOS_HostAddress}}/api/study/quizzes/ВСТАВЬ_QUIZ_ID/submit
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "answers": [0]
+}
+
+### 56. Заметка к материалу
+POST {{LifeOS_HostAddress}}/api/study/notes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "studyMaterialId": "ВСТАВЬ_MATERIAL_ID",
+  "content": "Важно: переобучение лечится регуляризацией."
+}
+
+### 57. Заметки материала
+GET {{LifeOS_HostAddress}}/api/study/materials/ВСТАВЬ_MATERIAL_ID/notes
+Authorization: Bearer {{token}}
+
+### 58. Карьерный профиль (создаётся автоматически)
+GET {{LifeOS_HostAddress}}/api/career/profile
+Authorization: Bearer {{token}}
+
+### 59. Привязка резюме
+###     Сначала загрузи PDF: POST /api/files/upload?module=Career
+PUT {{LifeOS_HostAddress}}/api/career/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "skills": "C#, ASP.NET Core, React, PostgreSQL",
+  "desiredPosition": "Backend Developer",
+  "resumeFileId": "ВСТАВЬ_RESUME_FILE_ID"
+}
+
+### 60. AI-разбор резюме
+POST {{LifeOS_HostAddress}}/api/career/resume-analysis
+Authorization: Bearer {{token}}
+
+### 61. Разбор сохранён в профиле (поле aiReview)
+GET {{LifeOS_HostAddress}}/api/career/profile
+Authorization: Bearer {{token}}
+
+### 62. Останови ai-service и повтори — ожидаем 400 ai.unavailable,
+###     а НЕ 500. Backend не должен падать из-за недоступности AI.
+GET {{LifeOS_HostAddress}}/api/finance/analysis?monthsBack=6
+Authorization: Bearer {{token}}

@@ -23,6 +23,17 @@
 
     <!-- Firebase Storage: под капотом это Google Cloud Storage -->
     <PackageReference Include="Google.Cloud.Storage.V1" Version="4.10.0" />
+
+    <!-- Канал к AI-сервису: HttpClientFactory + ретраи и circuit breaker (Polly) -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="8.10.0" />
+
+    <!--
+      Извлечение текста из PDF. PdfPig — чистый C# под Apache 2.0,
+      без нативных зависимостей: важно для Linux-контейнера, и лицензия
+      совместима с бесплатным использованием (в отличие от iText).
+    -->
+    <PackageReference Include="PdfPig" Version="0.1.9" />
   </ItemGroup>
 
 </Project>

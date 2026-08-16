@@ -64,6 +64,17 @@ public class LocalFileStorageService : IFileStorageService
         return new StorageUploadResult(url, storagePath);
     }
 
+    public Task<Stream> DownloadAsync(string storagePath, CancellationToken cancellationToken = default)
+    {
+        var fullPath = Path.Combine(_rootPath, storagePath.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!File.Exists(fullPath))
+            throw new FileNotFoundException($"Файл отсутствует в локальном хранилище: {storagePath}");
+
+        Stream stream = File.OpenRead(fullPath);
+        return Task.FromResult(stream);
+    }
+
     public Task DeleteAsync(string storagePath, CancellationToken cancellationToken = default)
     {
         var fullPath = Path.Combine(_rootPath, storagePath.Replace('/', Path.DirectorySeparatorChar));

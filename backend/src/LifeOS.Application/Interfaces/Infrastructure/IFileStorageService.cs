@@ -19,6 +19,13 @@ public interface IFileStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Чтение объекта из хранилища.
+    /// Добавлено в Фазе 6: учебному модулю нужно получить PDF обратно,
+    /// чтобы извлечь текст и отправить его в AI-сервис.
+    /// </summary>
+    Task<Stream> DownloadAsync(string storagePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Удаление объекта по внутреннему пути.
     /// Отсутствие объекта не считается ошибкой: цель — чтобы файла не было.
     /// </summary>

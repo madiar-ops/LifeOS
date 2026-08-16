@@ -1,4 +1,5 @@
 using LifeOS.API.Filters;
+using LifeOS.Application.DTO.Ai;
 using LifeOS.Application.DTO.Common;
 using LifeOS.Application.DTO.Health;
 using LifeOS.Application.Interfaces.Services;
@@ -55,6 +56,18 @@ public class HealthController : ControllerBase
     public async Task<ActionResult<HealthLogResponse>> Update(
         Guid id, [FromBody] UpdateHealthLogRequest request, CancellationToken cancellationToken)
         => Ok(await _healthLogService.UpdateAsync(id, request, cancellationToken));
+
+    /// <summary>
+    /// AI-оценка самочувствия за последние дни: интегральный балл,
+    /// прогноз настроения, факторы риска и рекомендации.
+    /// </summary>
+    /// <response code="400">Нет записей за период или AI-сервис недоступен.</response>
+    [HttpGet("analysis")]
+    [ProducesResponseType(typeof(AiResultResponse<HealthAssessmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AiResultResponse<HealthAssessmentResponse>>> Analyze(
+        [FromQuery] int daysBack = 30, CancellationToken cancellationToken = default)
+        => Ok(await _healthLogService.AnalyzeAsync(daysBack, cancellationToken));
 
     /// <summary>Удаление записи.</summary>
     [HttpDelete("logs/{id:guid}")]

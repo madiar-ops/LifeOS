@@ -1,15 +1,15 @@
 # PROJECT_STATE.md
 
 **Project:** LifeOS
-**Version:** 1.5
-**Last updated:** Phase 5 — AI Service (код написан И ПРОВЕРЕН запуском)
+**Version:** 1.6
+**Last updated:** Phase 6 — AI-модули и интеграция
 
 ---
 
 ## Current Phase
-**Phase 5 — AI Service** 🟢 КОД ПРОВЕРЕН (модели обучены, 18 тестов проходят)
+**Phase 6 — AI-модули** 🟡 КОД ГОТОВ, ТРЕБУЕТ ПРОВЕРКИ
 
-Следующая фаза: **Phase 6 — AI-зависимые модули + интеграция**.
+Следующая фаза: **Phase 7 — Dashboard API**.
 
 ---
 
@@ -69,7 +69,7 @@
 - [ ] Настроен Firebase ИЛИ осознанно используется локальный провайдер
 - [ ] Чек-лист проверки из `docs/PHASE4_FILES.md` §5 пройден
 
-### Phase 5 — AI Service 🟢 ПРОВЕРЕНО ЗАПУСКОМ
+### Phase 5 — AI Service ✅ ПРОВЕРЕНО ЗАПУСКОМ
 - [x] Скелет FastAPI: `config`, `security` (внутренний ключ), `main` с lifespan
 - [x] 5 модулей схем, 6 сервисов, 5 роутеров
 - [x] Генерация датасетов (9600 + 27000 строк, фиксированный seed)
@@ -82,6 +82,21 @@
 - [x] Dockerfile (multi-stage, непривилегированный пользователь), README
 - [ ] Прогон чек-листа `docs/PHASE5_AI_SERVICE.md` §4 на машине разработчика
 - [ ] Сгенерирован и записан `INTERNAL_API_KEY` в `ai-service/.env`
+
+### Phase 6 — AI-модули и интеграция 🟡
+- [x] Application: `AiSettings`, `AiContracts`, `AiEnvelopeExtensions`, `IAiService`, `IDocumentTextExtractor`
+- [x] Application: `StudyService` (материалы, конспект, тесты, заметки)
+- [x] Application: `CareerService` (профиль + разбор резюме)
+- [x] Application: `AiHistoryRecorder` (аудит + создание рекомендаций), `RecommendationService`
+- [x] Application: `AnalyzeAsync` в `FinanceService` и `HealthLogService`
+- [x] Infrastructure: `AiServiceClient` (HttpClient + Polly resilience), `PdfTextExtractor` (PdfPig)
+- [x] Infrastructure: `DownloadAsync` добавлен в оба провайдера хранилища
+- [x] API: `StudyController`, `CareerController`, `RecommendationsController`
+- [x] API: `GET /api/finance/analysis`, `GET /api/health/analysis`
+- [x] `LifeOS.API.http` дополнен сценариями 42–62
+- [ ] `AiService:InternalApiKey` задан и совпадает с `INTERNAL_API_KEY` в ai-service
+- [ ] Чек-лист `docs/PHASE6_AI_MODULES.md` §5 пройден
+- [ ] Подтверждена устойчивость: остановленный ai-service даёт 400, а не 500
 
 **Backend в этой фазе не изменялся** (требование PROMPTS_GUIDE, Prompt 3).
 
@@ -165,6 +180,22 @@
 63. **Swagger и CORS отключены вне Development** — сервис приватный.
 64. **Артефакты моделей и датасеты не коммитятся** — воспроизводятся четырьмя командами.
 
+### Phase 6
+65. **`AiContracts` — отдельные типы, не доменные сущности.** Изменение схемы FastAPI ломает один файл, а не домен.
+66. **snake_case задаётся политикой сериализации**, а не атрибутами на каждом поле.
+67. **`AddStandardResilienceHandler`** (ретраи + circuit breaker). `TotalRequestTimeout` обязан превышать `AttemptTimeout`, иначе Polly отклоняет конфигурацию при старте.
+68. **Недоступность AI → 400 `ai.unavailable`, не 500.** Отдельные коды: `ai.unauthorized` (рассинхрон ключей), `ai.model_unavailable` (модель не обучена), `ai.timeout`.
+69. **PdfPig вместо iText** — чистый C#, Apache 2.0, без нативных зависимостей. `NearestNeighbourWordExtractor`, потому что в PDF нет понятия «слово».
+70. **Скан без текстового слоя → понятная 400 `study.no_text_layer`.** OCR в проекте не используется.
+71. **Файл загружается модулем Files, материал создаётся из `FileId`** — валидация не дублируется. Один файл = один материал (409 при повторе).
+72. **Правильные ответы теста не отдаются клиенту** — иначе тест решается через DevTools. Проверка только на сервере.
+73. **Рекомендация создаётся только при `isConfident`** и превышении `RecommendationThreshold` — лента не засоряется догадками.
+74. **`AIHistory` хранит длину текста, а не сам текст**; payload наружу не отдаётся (личные документы).
+75. **Backend агрегирует данные до отправки в AI** — FastAPI получает помесячные итоги, а не сырые транзакции.
+76. **`confidence` проходит насквозь до фронтенда** через общий `AiEnvelopeExtensions.ToResponse`.
+77. **Карьерный профиль создаётся лениво**, при первом обращении.
+78. **`DownloadAsync` добавлен в `IFileStorageService`** — осознанное изменение интерфейса Фазы 4 ради Study и Career.
+
 ---
 
 ## Database Tables (13)
@@ -175,7 +206,6 @@ Recommendations, AIHistory, Files
 ---
 
 ## Not Started
-- [ ] Phase 6 — AI-модули (Study, Career, analysis) + `AiClient` в backend
 - [ ] Phase 7 — Dashboard API
 - [ ] Phase 8 — Frontend (React)
 - [ ] Phase 9 — Integration & Testing
@@ -199,7 +229,7 @@ Recommendations, AIHistory, Files
 ---
 
 ## Next Action
-1. Поднять `ai-service`: venv, зависимости, `INTERNAL_API_KEY`, четыре скрипта обучения.
-2. Прогнать `pytest` (ожидается 18 passed) и чек-лист `docs/PHASE5_AI_SERVICE.md` §4.
-3. Закоммитить фазы 1–5 по гранулярной схеме.
-4. Запустить **Фазу 6 — AI-зависимые модули + `AiClient`**.
+1. Задать `AiService:InternalApiKey` в user-secrets — он должен совпадать с `INTERNAL_API_KEY` в `ai-service/.env`.
+2. Запустить оба сервиса (сначала uvicorn, потом backend) и пройти чек-лист `docs/PHASE6_AI_MODULES.md` §5.
+3. Закоммитить фазы по гранулярной схеме.
+4. Запустить **Фазу 7 — Dashboard API**.

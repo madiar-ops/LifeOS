@@ -1,5 +1,7 @@
 using AutoMapper;
+using LifeOS.Application.Ai;
 using LifeOS.Application.Common;
+using LifeOS.Application.DTO.Ai;
 using LifeOS.Application.DTO.Health;
 using LifeOS.Application.Interfaces.Infrastructure;
 using LifeOS.Application.Interfaces.Repositories;
@@ -15,17 +17,23 @@ public class HealthLogService : IHealthLogService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IAiService _ai;
+    private readonly IAiHistoryRecorder _history;
     private readonly IMapper _mapper;
 
     public HealthLogService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider dateTime,
+        IAiService ai,
+        IAiHistoryRecorder history,
         IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _ai = ai;
+        _history = history;
         _mapper = mapper;
     }
 
@@ -114,6 +122,62 @@ public class HealthLogService : IHealthLogService
 
         _unitOfWork.HealthLogs.Remove(log);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// AI-оценка самочувствия за последние N дней.
+    /// В AI-сервис уходят только показатели без идентификаторов пользователя —
+    /// он не должен знать, чьи это данные.
+    /// </summary>
+    public async Task<AiResultResponse<HealthAssessmentResponse>> AnalyzeAsync(
+        int daysBack, CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUser.GetRequiredUserId();
+        var from = _dateTime.Today.AddDays(-Math.Max(daysBack, 1));
+
+        var logs = await _unitOfWork.HealthLogs.Query()
+            .Where(h => h.UserId == userId && h.Date >= from)
+            .OrderBy(h => h.Date)
+            .ToListAsync(cancellationToken);
+
+        if (logs.Count == 0)
+            throw new BusinessRuleException(
+                "Недостаточно данных: за выбранный период нет ни одной записи здоровья.",
+                "health.no_data");
+
+        var entries = logs
+            .Select(h => new AiContracts.HealthEntry(
+                h.Date.ToString("yyyy-MM-dd"),
+                h.SleepHours,
+                h.WaterMl,
+                h.Steps,
+                h.Weight,
+                (int)h.Mood))
+            .ToList();
+
+        var envelope = await _ai.AnalyzeHealthAsync(
+            new AiContracts.HealthAnalysisRequest(entries), cancellationToken);
+
+        var assessment = envelope.Result;
+
+        await _history.RecordAsync(
+            "/health-analysis",
+            new { daysAnalyzed = logs.Count },
+            new { assessment.WellbeingScore, assessment.PredictedMood },
+            envelope.Confidence,
+            envelope.IsConfident,
+            ModuleType.Health,
+            recommendationText: assessment.Recommendations.FirstOrDefault(),
+            cancellationToken);
+
+        var response = new HealthAssessmentResponse(
+            assessment.WellbeingScore,
+            assessment.PredictedMood,
+            assessment.RiskFactors,
+            assessment.Recommendations,
+            logs.Count);
+
+        return envelope.ToResponse(response);
     }
 
     private async Task<HealthLog> LoadOwnedAsync(Guid id, bool tracked, CancellationToken cancellationToken)

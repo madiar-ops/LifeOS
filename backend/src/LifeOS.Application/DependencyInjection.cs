@@ -33,6 +33,14 @@ public static class DependencyInjection
                 "FileStorage:MaxFileSizeMb должен быть в диапазоне 1–100.")
             .ValidateOnStart();
 
+        services.AddOptions<AiSettings>()
+            .Bind(configuration.GetSection(AiSettings.SectionName))
+            .Validate(s => !string.IsNullOrWhiteSpace(s.BaseUrl),
+                "AiService:BaseUrl не задан.")
+            .Validate(s => !string.IsNullOrWhiteSpace(s.InternalApiKey),
+                "AiService:InternalApiKey не задан. Он должен совпадать с INTERNAL_API_KEY в ai-service/.env.")
+            .ValidateOnStart();
+
         var assembly = typeof(DependencyInjection).Assembly;
 
         services.AddValidatorsFromAssembly(assembly);
@@ -46,6 +54,10 @@ public static class DependencyInjection
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<IHealthLogService, HealthLogService>();
         services.AddScoped<IFileService, FileService>();
+        services.AddScoped<IAiHistoryRecorder, AiHistoryRecorder>();
+        services.AddScoped<IStudyService, StudyService>();
+        services.AddScoped<ICareerService, CareerService>();
+        services.AddScoped<IRecommendationService, RecommendationService>();
 
         return services;
     }

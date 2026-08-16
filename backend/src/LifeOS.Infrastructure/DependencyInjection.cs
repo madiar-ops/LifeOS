@@ -5,6 +5,7 @@ using LifeOS.Infrastructure.Auth;
 using LifeOS.Application.Common;
 using LifeOS.Infrastructure.Data;
 using LifeOS.Infrastructure.Data.Interceptors;
+using LifeOS.Infrastructure.Ai;
 using LifeOS.Infrastructure.Repositories;
 using LifeOS.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -76,6 +77,36 @@ public static class DependencyInjection
             services.AddSingleton<IFileStorageService, LocalFileStorageService>();
         else
             services.AddSingleton<IFileStorageService, FirebaseStorageService>();
+
+        services.AddScoped<IDocumentTextExtractor, PdfTextExtractor>();
+
+        // Типизированный клиент AI-сервиса. Базовый адрес и внутренний ключ
+        // задаются один раз здесь — сам клиент их не знает.
+        var aiSettings = configuration.GetSection(AiSettings.SectionName).Get<AiSettings>()
+                         ?? new AiSettings();
+
+        services.AddHttpClient<IAiService, AiServiceClient>(client =>
+        {
+            client.BaseAddress = new Uri(aiSettings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(aiSettings.TimeoutSeconds);
+            client.DefaultRequestHeaders.Add("X-Internal-Api-Key", aiSettings.InternalApiKey);
+        })
+        // Стандартный набор устойчивости: ретраи с экспоненциальной задержкой,
+        // circuit breaker и таймаут. Сетевой сбой между двумя сервисами —
+        // штатная ситуация, а не повод показать пользователю ошибку.
+        .AddStandardResilienceHandler(options =>
+        {
+            options.Retry.MaxRetryAttempts = 2;
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(aiSettings.TimeoutSeconds);
+
+            // Таймаут всей цепочки попыток обязан быть больше таймаута одной,
+            // иначе библиотека отклонит конфигурацию при старте.
+            options.TotalRequestTimeout.Timeout =
+                TimeSpan.FromSeconds(aiSettings.TimeoutSeconds * 3);
+
+            options.CircuitBreaker.SamplingDuration =
+                TimeSpan.FromSeconds(aiSettings.TimeoutSeconds * 2);
+        });
 
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("postgres");
 
