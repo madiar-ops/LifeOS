@@ -62,8 +62,12 @@ venv/
 env/
 .pytest_cache/
 .ipynb_checkpoints/
+# Датасеты и артефакты моделей воспроизводятся скриптами обучения —
+# держать бинарники в git незачем.
 ai-service/app/ml/datasets/*
 !ai-service/app/ml/datasets/.gitkeep
+ai-service/app/ml/artifacts/*
+!ai-service/app/ml/artifacts/.gitkeep
 
 ## ---------- ОС и IDE ----------
 .DS_Store
