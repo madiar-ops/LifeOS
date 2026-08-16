@@ -1,4 +1,5 @@
 using LifeOS.API.Filters;
+using LifeOS.Application.DTO.Ai;
 using LifeOS.Application.DTO.Common;
 using LifeOS.Application.DTO.Finance;
 using LifeOS.Application.Interfaces.Services;
@@ -61,6 +62,20 @@ public class FinanceController : ControllerBase
         await _financeService.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// AI-прогноз расходов на следующий месяц.
+    /// В AI-сервис уходят только помесячные итоги — отдельные транзакции он не видит.
+    /// </summary>
+    /// <response code="400">Нет данных за период или AI-сервис недоступен.</response>
+    [HttpGet("analysis")]
+    [ProducesResponseType(typeof(AiResultResponse<FinanceForecastResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AiResultResponse<FinanceForecastResponse>>> Analyze(
+        [FromQuery] int monthsBack = 6,
+        [FromQuery] string? currency = null,
+        CancellationToken cancellationToken = default)
+        => Ok(await _financeService.AnalyzeAsync(monthsBack, currency, cancellationToken));
 
     /// <summary>
     /// Сводка за период: доходы, расходы, баланс и разбивка по категориям.
