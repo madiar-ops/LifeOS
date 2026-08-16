@@ -1,5 +1,6 @@
 using AutoMapper;
 using LifeOS.Application.DTO.Auth;
+using LifeOS.Application.DTO.Files;
 using LifeOS.Application.DTO.Finance;
 using LifeOS.Application.DTO.Goals;
 using LifeOS.Application.DTO.Health;
@@ -35,5 +36,10 @@ public class MappingProfile : Profile
         CreateMap<Transaction, TransactionResponse>();
 
         CreateMap<HealthLog, HealthLogResponse>();
+
+        // Наружу отдаём FirebaseUrl под нейтральным именем Url, а StoragePath
+        // не отдаём вовсе: внутреннее устройство хранилища клиента не касается.
+        CreateMap<StoredFile, FileResponse>()
+            .ForCtorParam(nameof(FileResponse.Url), opt => opt.MapFrom(src => src.FirebaseUrl));
     }
 }
