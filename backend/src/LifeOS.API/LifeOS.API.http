@@ -265,3 +265,59 @@ Content-Type: application/json
   "currentPassword": "Password123",
   "newPassword": "NewPassword456"
 }
+
+###############################################################
+# ФАЗА 4 — Files. Загрузка файлов идёт как multipart/form-data,
+# поэтому удобнее проверять через Swagger UI (кнопка "Choose File").
+# Ниже — эквиваленты для curl.
+###############################################################
+
+### 31. Загрузка PDF в модуль Study — ожидаем 201
+# curl -k -X POST "https://localhost:7001/api/files/upload?module=Study" \
+#   -H "Authorization: Bearer ТОКЕН" \
+#   -F "file=@C:/путь/к/документу.pdf"
+
+### 32. Попытка загрузить картинку в Study — ожидаем 400 file.type_not_allowed
+# curl -k -X POST "https://localhost:7001/api/files/upload?module=Study" \
+#   -H "Authorization: Bearer ТОКЕН" \
+#   -F "file=@C:/путь/к/картинке.png"
+
+### 33. Подделка расширения: переименуй любой .txt в .pdf и загрузи.
+###     Ожидаем 400 file.signature_mismatch — содержимое не начинается с %PDF.
+# curl -k -X POST "https://localhost:7001/api/files/upload?module=Study" \
+#   -H "Authorization: Bearer ТОКЕН" \
+#   -F "file=@C:/путь/к/поддельный.pdf"
+
+### 34. Список файлов
+GET {{LifeOS_HostAddress}}/api/files?pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### 35. Список файлов только модуля Study
+GET {{LifeOS_HostAddress}}/api/files?module=Study
+Authorization: Bearer {{token}}
+
+### 36. Метаданные файла
+GET {{LifeOS_HostAddress}}/api/files/ВСТАВЬ_FILE_ID
+Authorization: Bearer {{token}}
+
+### 37. Чужой файл — ожидаем 404
+GET {{LifeOS_HostAddress}}/api/files/00000000-0000-0000-0000-000000000001
+Authorization: Bearer {{token}}
+
+### 38. Загрузка аватара (JPEG/PNG/WebP до 2 МБ)
+# curl -k -X PUT "https://localhost:7001/api/users/avatar" \
+#   -H "Authorization: Bearer ТОКЕН" \
+#   -F "file=@C:/путь/к/avatar.png"
+
+### 39. Проверка: у профиля появился avatarUrl
+GET {{LifeOS_HostAddress}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### 40. Повторная загрузка аватара → старый файл удаляется из хранилища
+###     (проверь, что в /api/files?module=Avatar осталась ОДНА запись)
+GET {{LifeOS_HostAddress}}/api/files?module=Avatar
+Authorization: Bearer {{token}}
+
+### 41. Удаление файла
+DELETE {{LifeOS_HostAddress}}/api/files/ВСТАВЬ_FILE_ID
+Authorization: Bearer {{token}}
