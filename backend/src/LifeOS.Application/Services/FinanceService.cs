@@ -1,11 +1,14 @@
 using AutoMapper;
+using LifeOS.Application.Ai;
 using LifeOS.Application.Common;
+using LifeOS.Application.DTO.Ai;
 using LifeOS.Application.DTO.Finance;
 using LifeOS.Application.Interfaces.Infrastructure;
 using LifeOS.Application.Interfaces.Repositories;
 using LifeOS.Application.Interfaces.Services;
 using LifeOS.Domain.Entities;
 using LifeOS.Domain.Enums;
+using LifeOS.Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace LifeOS.Application.Services;
@@ -17,17 +20,23 @@ public class FinanceService : IFinanceService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IDateTimeProvider _dateTime;
+    private readonly IAiService _ai;
+    private readonly IAiHistoryRecorder _history;
     private readonly IMapper _mapper;
 
     public FinanceService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
         IDateTimeProvider dateTime,
+        IAiService ai,
+        IAiHistoryRecorder history,
         IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _dateTime = dateTime;
+        _ai = ai;
+        _history = history;
         _mapper = mapper;
     }
 
@@ -160,7 +169,95 @@ public class FinanceService : IFinanceService
             breakdown);
     }
 
+    /// <summary>
+    /// AI-прогноз расходов. Backend сам агрегирует историю по месяцам
+    /// и передаёт в AI-сервис только итоги — тот не имеет доступа к БД
+    /// и не должен видеть отдельные транзакции пользователя.
+    /// </summary>
+    public async Task<AiResultResponse<FinanceForecastResponse>> AnalyzeAsync(
+        int monthsBack, string? currency, CancellationToken cancellationToken = default)
+    {
+        var targetCurrency = NormalizeCurrency(currency ?? DefaultCurrency);
+        var today = _dateTime.Today;
+
+        var from = new DateOnly(today.Year, today.Month, 1).AddMonths(-Math.Max(monthsBack - 1, 0));
+
+        var monthly = await BuildQuery(null, null, from, today, targetCurrency)
+            .GroupBy(t => new { t.Date.Year, t.Date.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Income = g.Where(t => t.Type == TransactionType.Income).Sum(t => (decimal?)t.Amount) ?? 0m,
+                Expense = g.Where(t => t.Type == TransactionType.Expense).Sum(t => (decimal?)t.Amount) ?? 0m
+            })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .ToListAsync(cancellationToken);
+
+        if (monthly.Count == 0)
+            throw new BusinessRuleException(
+                "Недостаточно данных для прогноза: за выбранный период нет ни одной операции.",
+                "finance.no_data");
+
+        var history = monthly
+            .Select(x => new AiContracts.MonthlyTotal($"{x.Year:D4}-{x.Month:D2}", x.Income, x.Expense))
+            .ToList();
+
+        var categories = await BuildQuery(TransactionType.Expense, null, from, today, targetCurrency)
+            .GroupBy(t => t.Category)
+            .Select(g => new { Category = g.Key, Amount = g.Sum(t => t.Amount) })
+            .OrderByDescending(x => x.Amount)
+            .Take(10)
+            .ToListAsync(cancellationToken);
+
+        var request = new AiContracts.FinanceAnalysisRequest(
+            history,
+            categories.Select(c => new AiContracts.CategoryTotal(c.Category, c.Amount)).ToList(),
+            targetCurrency);
+
+        var envelope = await _ai.AnalyzeFinanceAsync(request, cancellationToken);
+        var forecast = envelope.Result;
+
+        await _history.RecordAsync(
+            "/finance/analysis",
+            new { monthsAnalyzed = history.Count, currency = targetCurrency },
+            forecast,
+            envelope.Confidence,
+            envelope.IsConfident,
+            ModuleType.Finance,
+            recommendationText: BuildRecommendation(forecast, targetCurrency),
+            cancellationToken);
+
+        var response = new FinanceForecastResponse(
+            forecast.PredictedExpense,
+            forecast.PredictedBalance,
+            forecast.Trend,
+            forecast.TopCategory,
+            forecast.SavingsRate,
+            targetCurrency,
+            history.Count);
+
+        return envelope.ToResponse(response);
+    }
+
     // ---- Вспомогательные методы -----------------------------------------
+
+    private static string? BuildRecommendation(AiContracts.FinanceForecast forecast, string currency)
+    {
+        if (forecast.PredictedBalance < 0)
+            return $"Прогноз показывает дефицит около {Math.Abs(forecast.PredictedBalance):N0} {currency} " +
+                   "в следующем месяце. Стоит пересмотреть крупные траты.";
+
+        if (forecast.Trend == "rising" && forecast.TopCategory is not null)
+            return $"Расходы растут, больше всего уходит на категорию «{forecast.TopCategory}». " +
+                   "Проверьте, нет ли там необязательных трат.";
+
+        if (forecast.SavingsRate >= 0.20m)
+            return $"Удаётся откладывать около {forecast.SavingsRate * 100:0}% дохода — " +
+                   "хороший момент, чтобы задать финансовую цель.";
+
+        return null;
+    }
 
     private static string NormalizeCurrency(string currency)
         => string.IsNullOrWhiteSpace(currency)

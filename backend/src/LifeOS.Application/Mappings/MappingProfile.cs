@@ -1,9 +1,12 @@
 using AutoMapper;
 using LifeOS.Application.DTO.Auth;
+using LifeOS.Application.DTO.Ai;
+using LifeOS.Application.DTO.Career;
 using LifeOS.Application.DTO.Files;
 using LifeOS.Application.DTO.Finance;
 using LifeOS.Application.DTO.Goals;
 using LifeOS.Application.DTO.Health;
+using LifeOS.Application.DTO.Study;
 using LifeOS.Application.DTO.Tasks;
 using LifeOS.Domain.Entities;
 
@@ -41,5 +44,19 @@ public class MappingProfile : Profile
         // не отдаём вовсе: внутреннее устройство хранилища клиента не касается.
         CreateMap<StoredFile, FileResponse>()
             .ForCtorParam(nameof(FileResponse.Url), opt => opt.MapFrom(src => src.FirebaseUrl));
+
+        CreateMap<StudyMaterial, StudyMaterialResponse>()
+            .ForCtorParam(nameof(StudyMaterialResponse.FileName),
+                opt => opt.MapFrom(src => src.File != null ? src.File.FileName : string.Empty))
+            .ForCtorParam(nameof(StudyMaterialResponse.FileUrl),
+                opt => opt.MapFrom(src => src.File != null ? src.File.FirebaseUrl : string.Empty))
+            .ForCtorParam(nameof(StudyMaterialResponse.NotesCount),
+                opt => opt.MapFrom(src => src.Notes.Count))
+            .ForCtorParam(nameof(StudyMaterialResponse.QuizzesCount),
+                opt => opt.MapFrom(src => src.Quizzes.Count));
+
+        CreateMap<StudyNote, StudyNoteResponse>();
+
+        CreateMap<Recommendation, RecommendationResponse>();
     }
 }
