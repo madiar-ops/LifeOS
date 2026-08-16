@@ -2,9 +2,11 @@ using LifeOS.Application.Interfaces.Auth;
 using LifeOS.Application.Interfaces.Infrastructure;
 using LifeOS.Application.Interfaces.Repositories;
 using LifeOS.Infrastructure.Auth;
+using LifeOS.Application.Common;
 using LifeOS.Infrastructure.Data;
 using LifeOS.Infrastructure.Data.Interceptors;
 using LifeOS.Infrastructure.Repositories;
+using LifeOS.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,6 +64,18 @@ public static class DependencyInjection
         // Auth: обе реализации не хранят состояние, поэтому Singleton.
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        // Провайдер хранилища выбирается по конфигурации: если bucket не задан
+        // (или явно включён ForceLocal) — работаем с локальной папкой.
+        // Так разработка модулей не блокируется настройкой Firebase.
+        var storageSettings = configuration
+            .GetSection(FileStorageSettings.SectionName)
+            .Get<FileStorageSettings>() ?? new FileStorageSettings();
+
+        if (storageSettings.UseLocal)
+            services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+        else
+            services.AddSingleton<IFileStorageService, FirebaseStorageService>();
 
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("postgres");
 
