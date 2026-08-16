@@ -1,4 +1,5 @@
 using LifeOS.Application.Common;
+using LifeOS.Application.DTO.Ai;
 using LifeOS.Application.DTO.Finance;
 
 namespace LifeOS.Application.Interfaces.Services;
@@ -13,4 +14,8 @@ public interface IFinanceService
 
     Task<FinanceSummaryResponse> GetSummaryAsync(
         DateOnly? from, DateOnly? to, string? currency, CancellationToken cancellationToken = default);
+
+    /// <summary>AI-прогноз расходов на следующий месяц по истории транзакций.</summary>
+    Task<AiResultResponse<FinanceForecastResponse>> AnalyzeAsync(
+        int monthsBack, string? currency, CancellationToken cancellationToken = default);
 }
