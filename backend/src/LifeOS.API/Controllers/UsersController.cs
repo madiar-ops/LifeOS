@@ -16,8 +16,13 @@ namespace LifeOS.API.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IFileService _fileService;
 
-    public UsersController(IUserService userService) => _userService = userService;
+    public UsersController(IUserService userService, IFileService fileService)
+    {
+        _userService = userService;
+        _fileService = fileService;
+    }
 
     /// <summary>Профиль пользователя по Id. Доступен только владельцу.</summary>
     [HttpGet("{id:guid}")]
@@ -34,6 +39,23 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<UserResponse>> UpdateProfile(
         [FromBody] UpdateProfileRequest request, CancellationToken cancellationToken)
         => Ok(await _userService.UpdateProfileAsync(request, cancellationToken));
+
+    /// <summary>
+    /// Загрузка аватара. Принимает JPEG, PNG или WebP до 2 МБ.
+    /// Предыдущий аватар удаляется из хранилища.
+    /// </summary>
+    /// <response code="200">Аватар обновлён, возвращается его URL.</response>
+    /// <response code="400">Недопустимый тип или размер файла.</response>
+    [HttpPut("avatar")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadAvatar(IFormFile file, CancellationToken cancellationToken)
+    {
+        var upload = await FilesController.ToUploadDataAsync(file, cancellationToken);
+        var url = await _fileService.UploadAvatarAsync(upload, cancellationToken);
+
+        return Ok(new { avatarUrl = url });
+    }
 
     /// <summary>
     /// Смена пароля. Требует текущий пароль.

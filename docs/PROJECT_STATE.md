@@ -1,15 +1,15 @@
 # PROJECT_STATE.md
 
 **Project:** LifeOS
-**Version:** 1.3
-**Last updated:** Phase 3 — Core CRUD (код сгенерирован, ожидает проверки)
+**Version:** 1.4
+**Last updated:** Phase 4 — Files (код сгенерирован, ожидает проверки)
 
 ---
 
 ## Current Phase
-**Phase 3 — Core CRUD** 🟡 КОД ГОТОВ, ТРЕБУЕТ ПРОВЕРКИ
+**Phase 4 — Files** 🟡 КОД ГОТОВ, ТРЕБУЕТ ПРОВЕРКИ
 
-Следующая фаза: **Phase 4 — Files (Firebase)**.
+Следующая фаза: **Phase 5 — AI Service (FastAPI)**.
 
 ---
 
@@ -49,7 +49,7 @@
 - [ ] `Jwt:Key` задан в user-secrets
 - [ ] Чек-лист проверки из `docs/PHASE2_AUTH.md` §5 пройден
 
-### Phase 3 — Core CRUD 🟡
+### Phase 3 — Core CRUD ✅
 - [x] Application: 21 DTO (Users, Goals, Tasks, Finance, Health, Common)
 - [x] Application: `IUserService`, `IGoalService`, `ITaskService`, `IFinanceService`, `IHealthLogService` + реализации
 - [x] Application: `MappingProfile` (AutoMapper), 10 валидаторов, `CrudGuard`, `PagedResponse<T>`
@@ -58,8 +58,17 @@
 - [x] `ValidationFilter` теперь обрабатывает и ошибки привязки модели
 - [x] `LifeOS.API.http` дополнен сценариями 11–30
 - [ ] Чек-лист проверки из `docs/PHASE3_CORE_CRUD.md` §5 пройден
-- [ ] Подтверждено `ON DELETE SET NULL` (удаление цели не убивает задачи)
-- [ ] Подтверждён уникальный индекс `(UserId, Date)` на HealthLogs (повтор даты → 409)
+
+### Phase 4 — Files 🟡
+- [x] Application: `FileStorageSettings`, `FileUploadData`, `StorageUploadResult`, `FileValidationRules`
+- [x] Application: `IFileStorageService`, `IFileService`, `FileService` (валидация + компенсация при сбое)
+- [x] Infrastructure: `FirebaseStorageService`, `LocalFileStorageService`, `StoragePathBuilder`
+- [x] API: `FilesController`, `PUT /api/users/avatar`, `UseStaticFiles`, лимит тела 15 МБ
+- [x] Трёхуровневая валидация: MIME → расширение → сигнатура файла
+- [x] `LifeOS.API.http` дополнен сценариями 31–41
+- [ ] Настроен Firebase (`FileStorage:Bucket` + credentials) ИЛИ осознанно используется локальный провайдер
+- [ ] Чек-лист проверки из `docs/PHASE4_FILES.md` §5 пройден
+- [ ] Подтверждена защита от подделки типа (переименованный .txt → 400)
 
 ---
 
@@ -114,6 +123,18 @@
 40. **Осознанный компромисс:** `LifeOS.Application` ссылается на `Microsoft.EntityFrameworkCore` ради `IQueryable`/`Include` (как в шаблоне Джейсона Тейлора). Провайдер-специфичных пакетов (Npgsql) там нет, `Domain` полностью чист.
 41. **Liveness-эндпоинт переехал** с `/api/health` на `/api/ping` — маршрут занял модуль Health.
 
+### Phase 4
+42. **Два провайдера хранилища**, выбор по конфигурации: Firebase (прод) и локальная папка (разработка). Локальный не годится для прода — ФС на Render эфемерна.
+43. **Проверка сигнатуры файла (магические числа)** — `Content-Type` подделывается тривиально, сверка первых байтов не даёт залить исполняемый файл под видом PDF.
+44. **Три уровня валидации:** MIME-тип → расширение → сигнатура. Разрешённые типы различаются по модулям (Study/Career — только PDF).
+45. **Имя файла в хранилище заменяется на GUID**, схема пути `users/{userId}/{module}/{guid}` — нет коллизий и path traversal.
+46. **`StoragePath` хранится отдельно от `Url` и наружу не отдаётся** — удаление идёт по внутреннему пути.
+47. **Компенсация при сбое:** если метаданные не легли в БД, файл удаляется из хранилища — иначе копятся «сироты».
+48. **Старый аватар удаляется после коммита транзакции**, а не до — иначе при откате профиль ссылался бы в пустоту.
+49. **Ошибка удаления из хранилища не роняет запрос** — логируется, для пользователя операция успешна.
+50. **Проверка ссылок перед удалением файла → 409** — у `Files` в БД стоит `NoAction`, иначе была бы ошибка внешнего ключа.
+51. **`FileUploadData` вместо `IFormFile`** в слое Application — сервис вызываем из фонового задания или теста.
+
 ---
 
 ## Database Tables (13)
@@ -124,7 +145,6 @@ Recommendations, AIHistory, Files
 ---
 
 ## Not Started
-- [ ] Phase 4 — Files (Firebase)
 - [ ] Phase 5 — AI Service (FastAPI + модели)
 - [ ] Phase 6 — AI-модули (Study, Career, analysis)
 - [ ] Phase 7 — Dashboard API
@@ -150,6 +170,7 @@ Recommendations, AIHistory, Files
 ---
 
 ## Next Action
-1. Собрать проект (`dotnet build`) — добавились пакеты AutoMapper и EF Core в Application.
-2. Пройти чек-лист `docs/PHASE3_CORE_CRUD.md` §5 — сценарии 11–30 в `LifeOS.API.http`.
-3. Запустить **Фазу 4 — Files (Firebase)**.
+1. Собрать проект (`dotnet build`) — добавился пакет `Google.Cloud.Storage.V1`.
+2. Настроить Firebase (`docs/PHASE4_FILES.md` §2) либо оставить локальный провайдер для разработки.
+3. Пройти чек-лист `docs/PHASE4_FILES.md` §5 — загрузку удобнее проверять через Swagger UI.
+4. Запустить **Фазу 5 — AI Service (FastAPI)**.

@@ -51,6 +51,14 @@ try
     builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
         options.SuppressModelStateInvalidFilter = true);
 
+    // Жёсткий предел на размер тела запроса. Валидация внутри FileService
+    // тоже проверяет размер, но этот лимит срабатывает раньше — сервер
+    // обрывает приём, не выделяя память под гигантский файл.
+    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+    {
+        options.MultipartBodyLengthLimit = 15 * 1024 * 1024; // 15 МБ
+    });
+
     builder.Services.AddProblemDetails();
     builder.Services.AddSwaggerDocumentation();
     builder.Services.AddCorsPolicy(builder.Configuration);
@@ -79,6 +87,10 @@ try
     {
         app.UseHttpsRedirection();
     }
+
+    // Раздача локально сохранённых файлов (wwwroot/uploads).
+    // При работе с Firebase не мешает: папка просто пустует.
+    app.UseStaticFiles();
 
     app.UseCors(CorsExtensions.PolicyName);
 

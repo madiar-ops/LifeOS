@@ -1,0 +1,24 @@
+# Локальная инфраструктура для разработки.
+# На этом этапе поднимаем только PostgreSQL — backend и ai-service
+# запускаются из IDE, так удобнее отлаживать.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lifeos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lifeos}
+      POSTGRES_USER: ${POSTGRES_USER:-lifeos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lifeos}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - lifeos-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lifeos} -d ${POSTGRES_DB:-lifeos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  lifeos-pgdata:
