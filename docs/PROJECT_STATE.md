@@ -1,15 +1,15 @@
 # PROJECT_STATE.md
 
 **Project:** LifeOS
-**Version:** 1.4
-**Last updated:** Phase 4 — Files (код сгенерирован, ожидает проверки)
+**Version:** 1.5
+**Last updated:** Phase 5 — AI Service (код написан И ПРОВЕРЕН запуском)
 
 ---
 
 ## Current Phase
-**Phase 4 — Files** 🟡 КОД ГОТОВ, ТРЕБУЕТ ПРОВЕРКИ
+**Phase 5 — AI Service** 🟢 КОД ПРОВЕРЕН (модели обучены, 18 тестов проходят)
 
-Следующая фаза: **Phase 5 — AI Service (FastAPI)**.
+Следующая фаза: **Phase 6 — AI-зависимые модули + интеграция**.
 
 ---
 
@@ -59,16 +59,31 @@
 - [x] `LifeOS.API.http` дополнен сценариями 11–30
 - [ ] Чек-лист проверки из `docs/PHASE3_CORE_CRUD.md` §5 пройден
 
-### Phase 4 — Files 🟡
+### Phase 4 — Files ✅
 - [x] Application: `FileStorageSettings`, `FileUploadData`, `StorageUploadResult`, `FileValidationRules`
 - [x] Application: `IFileStorageService`, `IFileService`, `FileService` (валидация + компенсация при сбое)
 - [x] Infrastructure: `FirebaseStorageService`, `LocalFileStorageService`, `StoragePathBuilder`
 - [x] API: `FilesController`, `PUT /api/users/avatar`, `UseStaticFiles`, лимит тела 15 МБ
 - [x] Трёхуровневая валидация: MIME → расширение → сигнатура файла
 - [x] `LifeOS.API.http` дополнен сценариями 31–41
-- [ ] Настроен Firebase (`FileStorage:Bucket` + credentials) ИЛИ осознанно используется локальный провайдер
+- [ ] Настроен Firebase ИЛИ осознанно используется локальный провайдер
 - [ ] Чек-лист проверки из `docs/PHASE4_FILES.md` §5 пройден
-- [ ] Подтверждена защита от подделки типа (переименованный .txt → 400)
+
+### Phase 5 — AI Service 🟢 ПРОВЕРЕНО ЗАПУСКОМ
+- [x] Скелет FastAPI: `config`, `security` (внутренний ключ), `main` с lifespan
+- [x] 5 модулей схем, 6 сервисов, 5 роутеров
+- [x] Генерация датасетов (9600 + 27000 строк, фиксированный seed)
+- [x] `finance_model` (GradientBoosting): **R² = 0.9290**, MAE = 12 036
+- [x] `health_model` (RandomForest + Scaler): **Accuracy = 0.8613**, F1 = 0.8580
+- [x] `wellbeing_model` (PyTorch MLP): **MAE = 6.139**, RMSE = 8.923
+- [x] Единый формат `AIResponse` с `confidence`, `is_confident`, `explanation`, `contributions`
+- [x] Запасные локальные алгоритмы для Study и Career (работа без LLM-ключа)
+- [x] **18 pytest-тестов проходят**
+- [x] Dockerfile (multi-stage, непривилегированный пользователь), README
+- [ ] Прогон чек-листа `docs/PHASE5_AI_SERVICE.md` §4 на машине разработчика
+- [ ] Сгенерирован и записан `INTERNAL_API_KEY` в `ai-service/.env`
+
+**Backend в этой фазе не изменялся** (требование PROMPTS_GUIDE, Prompt 3).
 
 ---
 
@@ -135,6 +150,21 @@
 50. **Проверка ссылок перед удалением файла → 409** — у `Files` в БД стоит `NoAction`, иначе была бы ошибка внешнего ключа.
 51. **`FileUploadData` вместо `IFormFile`** в слое Application — сервис вызываем из фонового задания или теста.
 
+### Phase 5
+52. **Внутренний ключ `X-Internal-Api-Key`** защищает канал ASP.NET → FastAPI. Сравнение через `hmac.compare_digest` (постоянное время). Пустой ключ → сервис отвечает 500, а не работает «открыто».
+53. **Модели загружаются один раз в `lifespan`**, не на каждый запрос — ключевое отличие инференс-сервиса от обучающего скрипта.
+54. **Отсутствие модели даёт 503 только своему эндпоинту**, сервис остаётся работоспособным.
+55. **`confidence` + `is_confident` + `explanation` в КАЖДОМ ответе** — требование MASTER_GUIDE. Уверенность вычисляется (`residual_std` для регрессии, `predict_proba` для классификации), а не задаётся константой.
+56. **`contributions`** — вклад признаков из `feature_importances_`: модель не чёрный ящик.
+57. **GradientBoosting для табличных задач, один PyTorch MLP как показательная модель.** Честная позиция: на этих данных бустинг не хуже, PyTorch демонстрирует владение инструментом.
+58. **Параметры нормализации сохраняются вместе с весами** (torch) и внутри `Pipeline` (sklearn) — исключает подачу данных в чужом масштабе в проде.
+59. **Синтетические данные с фиксированным seed** вместо Kaggle: проект собирается «из коробки». Замена на реальный CSV с теми же колонками не требует правки кода.
+60. **Извлекающая суммаризация как запасной путь** — физически не может выдумать содержание.
+61. **Отказ вместо плохого результата:** без LLM-ключа генерация тестов возвращает `source: "unavailable"`, а не бессмысленные вопросы.
+62. **Падение внешнего LLM не роняет эндпоинт** — срабатывает локальный алгоритм с пониженной уверенностью.
+63. **Swagger и CORS отключены вне Development** — сервис приватный.
+64. **Артефакты моделей и датасеты не коммитятся** — воспроизводятся четырьмя командами.
+
 ---
 
 ## Database Tables (13)
@@ -145,8 +175,7 @@ Recommendations, AIHistory, Files
 ---
 
 ## Not Started
-- [ ] Phase 5 — AI Service (FastAPI + модели)
-- [ ] Phase 6 — AI-модули (Study, Career, analysis)
+- [ ] Phase 6 — AI-модули (Study, Career, analysis) + `AiClient` в backend
 - [ ] Phase 7 — Dashboard API
 - [ ] Phase 8 — Frontend (React)
 - [ ] Phase 9 — Integration & Testing
@@ -170,7 +199,7 @@ Recommendations, AIHistory, Files
 ---
 
 ## Next Action
-1. Собрать проект (`dotnet build`) — добавился пакет `Google.Cloud.Storage.V1`.
-2. Настроить Firebase (`docs/PHASE4_FILES.md` §2) либо оставить локальный провайдер для разработки.
-3. Пройти чек-лист `docs/PHASE4_FILES.md` §5 — загрузку удобнее проверять через Swagger UI.
-4. Запустить **Фазу 5 — AI Service (FastAPI)**.
+1. Поднять `ai-service`: venv, зависимости, `INTERNAL_API_KEY`, четыре скрипта обучения.
+2. Прогнать `pytest` (ожидается 18 passed) и чек-лист `docs/PHASE5_AI_SERVICE.md` §4.
+3. Закоммитить фазы 1–5 по гранулярной схеме.
+4. Запустить **Фазу 6 — AI-зависимые модули + `AiClient`**.
