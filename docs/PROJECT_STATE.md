@@ -1,15 +1,15 @@
 # PROJECT_STATE.md
 
 **Project:** LifeOS
-**Version:** 1.6
-**Last updated:** Phase 6 — AI-модули и интеграция
+**Version:** 1.7
+**Last updated:** Phase 7 — Dashboard API (BACKEND ЗАКРЫТ)
 
 ---
 
 ## Current Phase
-**Phase 6 — AI-модули** 🟡 КОД ГОТОВ, ТРЕБУЕТ ПРОВЕРКИ
+**Phase 7 — Dashboard** 🟡 КОД ГОТОВ, ТРЕБУЕТ ПРОВЕРКИ
 
-Следующая фаза: **Phase 7 — Dashboard API**.
+Все серверные фазы завершены. Следующая фаза: **Phase 8 — Frontend (React)**.
 
 ---
 
@@ -83,7 +83,7 @@
 - [ ] Прогон чек-листа `docs/PHASE5_AI_SERVICE.md` §4 на машине разработчика
 - [ ] Сгенерирован и записан `INTERNAL_API_KEY` в `ai-service/.env`
 
-### Phase 6 — AI-модули и интеграция 🟡
+### Phase 6 — AI-модули и интеграция ✅
 - [x] Application: `AiSettings`, `AiContracts`, `AiEnvelopeExtensions`, `IAiService`, `IDocumentTextExtractor`
 - [x] Application: `StudyService` (материалы, конспект, тесты, заметки)
 - [x] Application: `CareerService` (профиль + разбор резюме)
@@ -96,7 +96,15 @@
 - [x] `LifeOS.API.http` дополнен сценариями 42–62
 - [ ] `AiService:InternalApiKey` задан и совпадает с `INTERNAL_API_KEY` в ai-service
 - [ ] Чек-лист `docs/PHASE6_AI_MODULES.md` §5 пройден
-- [ ] Подтверждена устойчивость: остановленный ai-service даёт 400, а не 500
+
+### Phase 7 — Dashboard 🟡
+- [x] Application: `DashboardDtos` (14 типов), `IDashboardService`, `DashboardService`
+- [x] Восемь виджетов: цели, задачи, финансы, здоровье, учёба, карьера, рекомендации, файлы
+- [x] Все агрегаты считаются в PostgreSQL через `GroupBy`
+- [x] API: `DashboardController` — `GET /api/dashboard?days=30`
+- [x] `LifeOS.API.http` дополнен сценариями 63–67
+- [ ] Чек-лист `docs/PHASE7_DASHBOARD.md` §4 пройден
+- [ ] Проверено на новом пользователе без данных (должны быть нули, не 500)
 
 **Backend в этой фазе не изменялся** (требование PROMPTS_GUIDE, Prompt 3).
 
@@ -196,6 +204,15 @@
 77. **Карьерный профиль создаётся лениво**, при первом обращении.
 78. **`DownloadAsync` добавлен в `IFileStorageService`** — осознанное изменение интерфейса Фазы 4 ради Study и Career.
 
+### Phase 7
+79. **Один агрегирующий endpoint вместо сборки на фронтенде** — восемь запросов ради одного экрана означают восемь TLS-рукопожатий и восемь проверок JWT.
+80. **Запросы Dashboard идут ПОСЛЕДОВАТЕЛЬНО, не через `Task.WhenAll`** — EF Core не поддерживает конкурентные операции на одном `DbContext`. Готовый ответ на вопрос «почему не распараллелили».
+81. **Dashboard не вызывает AI** — экран обязан открываться мгновенно; рекомендации читаются из таблицы.
+82. **Отменённые цели исключены из знаменателя `completionRate`** — отмена не провал.
+83. **Валюта дашборда — самая частая у пользователя**, смешивание валют исключено.
+84. **Тренд всегда за 6 месяцев** независимо от параметра `days` — график из двух точек бессмыслен.
+85. **`days` обрезается до 1–365 вместо 400** — дашборд не падает из-за опечатки в query-параметре.
+
 ---
 
 ## Database Tables (13)
@@ -206,7 +223,6 @@ Recommendations, AIHistory, Files
 ---
 
 ## Not Started
-- [ ] Phase 7 — Dashboard API
 - [ ] Phase 8 — Frontend (React)
 - [ ] Phase 9 — Integration & Testing
 - [ ] Phase 10 — Deployment
@@ -229,7 +245,8 @@ Recommendations, AIHistory, Files
 ---
 
 ## Next Action
-1. Задать `AiService:InternalApiKey` в user-secrets — он должен совпадать с `INTERNAL_API_KEY` в `ai-service/.env`.
-2. Запустить оба сервиса (сначала uvicorn, потом backend) и пройти чек-лист `docs/PHASE6_AI_MODULES.md` §5.
-3. Закоммитить фазы по гранулярной схеме.
-4. Запустить **Фазу 7 — Dashboard API**.
+1. Пройти чек-листы Фаз 6 и 7 (сценарии 42–67 в `LifeOS.API.http`).
+2. Закоммитить фазы 6 и 7.
+3. Запустить **Фазу 8 — Frontend (React)**.
+
+**Backend завершён:** 7 из 7 серверных фаз.
