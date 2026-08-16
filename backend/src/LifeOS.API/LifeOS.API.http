@@ -454,3 +454,26 @@ Authorization: Bearer {{token}}
 ###     а НЕ 500. Backend не должен падать из-за недоступности AI.
 GET {{LifeOS_HostAddress}}/api/finance/analysis?monthsBack=6
 Authorization: Bearer {{token}}
+
+###############################################################
+# ФАЗА 7 — Dashboard
+###############################################################
+
+### 63. Сводка главного экрана за 30 дней (по умолчанию)
+GET {{LifeOS_HostAddress}}/api/dashboard
+Authorization: Bearer {{token}}
+
+### 64. Сводка за неделю
+GET {{LifeOS_HostAddress}}/api/dashboard?days=7
+Authorization: Bearer {{token}}
+
+### 65. Сводка за год
+GET {{LifeOS_HostAddress}}/api/dashboard?days=365
+Authorization: Bearer {{token}}
+
+### 66. Некорректное значение — обрезается до допустимого диапазона, не 400
+GET {{LifeOS_HostAddress}}/api/dashboard?days=99999
+Authorization: Bearer {{token}}
+
+### 67. Без токена — ожидаем 401
+GET {{LifeOS_HostAddress}}/api/dashboard
