@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="LifeOS — персональное пространство: цели, задачи, финансы, здоровье, учёба и карьера с AI-аналитикой."
+    />
+    <meta name="theme-color" content="#08080a" />
+    <title>LifeOS</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      /*
+       * Тема применяется ДО отрисовки React — синхронным скриптом в <head>.
+       * Если ставить класс в useEffect, между первым кадром и гидратацией
+       * пользователь тёмной темы увидит белую вспышку.
+       */
+      (function () {
+        try {
+          var saved = localStorage.getItem('lifeos.theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var dark = saved ? saved === 'dark' : prefersDark;
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (_) {
+          /* приватный режим блокирует localStorage — остаёмся на тёмной теме */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
