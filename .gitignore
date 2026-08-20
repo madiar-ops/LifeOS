@@ -28,7 +28,8 @@ artifacts/
 ## ---------- Секреты и окружение ----------
 .env
 .env.local
-*.env
+.env.*.local
+!.env.example
 appsettings.*.local.json
 secrets.json
 firebase-*.json

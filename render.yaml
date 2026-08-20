@@ -1,0 +1,75 @@
+# ============================================================
+# Render Blueprint — backend и AI-сервис
+#
+# Фронтенд размещается на Vercel (vercel.json), база — на Neon,
+# файлы — в Firebase Storage. Здесь только то, что выполняется
+# как серверный процесс.
+#
+# Развёртывание: Render Dashboard → New → Blueprint → указать репозиторий.
+# ============================================================
+
+services:
+  # ---- AI-микросервис -------------------------------------
+  - type: web
+    name: lifeos-ai
+    runtime: docker
+    dockerfilePath: ./ai-service/Dockerfile
+    dockerContext: ./ai-service
+    plan: free
+    region: frankfurt
+    healthCheckPath: /ping
+    envVars:
+      - key: ENVIRONMENT
+        value: Production
+      - key: INTERNAL_API_KEY
+        # generateValue создаёт секрет автоматически. Ниже backend
+        # ссылается на это же значение через fromService —
+        # синхронизировать ключ вручную не нужно.
+        generateValue: true
+      - key: LLM_API_KEY
+        sync: false          # задаётся вручную в панели, в git не попадает
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.60"
+
+  # ---- Backend --------------------------------------------
+  - type: web
+    name: lifeos-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/ping
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      - key: ConnectionStrings__DefaultConnection
+        sync: false          # строка подключения Neon — вручную
+
+      - key: Jwt__Key
+        generateValue: true
+      - key: Jwt__Issuer
+        value: LifeOS.API
+      - key: Jwt__Audience
+        value: LifeOS.Client
+
+      # Внутренний адрес: AI-сервис не выходит в интернет.
+      - key: AiService__BaseUrl
+        fromService:
+          type: web
+          name: lifeos-ai
+          property: hostport
+      - key: AiService__InternalApiKey
+        fromService:
+          type: web
+          name: lifeos-ai
+          envVarKey: INTERNAL_API_KEY
+
+      - key: FileStorage__Bucket
+        sync: false
+      - key: FileStorage__CredentialsJson
+        sync: false
+
+      - key: Cors__AllowedOrigins__0
+        sync: false          # адрес фронтенда на Vercel
