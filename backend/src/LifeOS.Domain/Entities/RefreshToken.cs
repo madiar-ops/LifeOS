@@ -23,8 +23,16 @@ public class RefreshToken : BaseEntity
 
     public User User { get; set; } = null!;
 
-    public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
+    /// <summary>
+    /// Истёк ли токен на указанный момент.
+    ///
+    /// Время передаётся аргументом, а не берётся из DateTime.UtcNow: обращение
+    /// к системным часам прямо из доменной сущности делает её непроверяемой —
+    /// тест на истечение токена пришлось бы ждать семь дней. Источник времени
+    /// в приложении один — IDateTimeProvider.
+    /// </summary>
+    public bool IsExpiredAt(DateTime utcNow) => utcNow >= ExpiresAt;
 
-    /// <summary>Токен пригоден к использованию только если не отозван и не истёк.</summary>
-    public bool IsActive => !IsRevoked && !IsExpired;
+    /// <summary>Токен пригоден к использованию, только если не отозван и не истёк.</summary>
+    public bool IsActiveAt(DateTime utcNow) => !IsRevoked && !IsExpiredAt(utcNow);
 }

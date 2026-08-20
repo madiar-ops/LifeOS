@@ -26,8 +26,22 @@ public interface IUnitOfWork : IAsyncDisposable
     /// <summary>Фиксирует все накопленные изменения. Возвращает количество затронутых строк.</summary>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Явная транзакция — нужна там, где несколько SaveChanges должны быть атомарны.</summary>
-    Task BeginTransactionAsync(CancellationToken cancellationToken = default);
-    Task CommitTransactionAsync(CancellationToken cancellationToken = default);
-    Task RollbackTransactionAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Выполняет операцию в одной транзакции.
+    ///
+    /// Единый метод вместо тройки Begin/Commit/Rollback — вынужденное решение:
+    /// в БД включён EnableRetryOnFailure (ADR 19), а стратегия повторов
+    /// несовместима с транзакцией, открытой вручную. При сетевом сбое EF Core
+    /// повторил бы только упавший вызов, а не всю транзакцию, и часть изменений
+    /// применилась бы дважды. Здесь стратегия повторяет операцию целиком.
+    ///
+    /// Коммит выполняется автоматически при успешном завершении,
+    /// откат — при любом исключении.
+    /// </summary>
+    Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="ExecuteInTransactionAsync(Func{CancellationToken, Task}, CancellationToken)" />
+    Task<TResult> ExecuteInTransactionAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> operation, CancellationToken cancellationToken = default);
 }
