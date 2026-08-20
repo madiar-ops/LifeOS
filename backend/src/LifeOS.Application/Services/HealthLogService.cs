@@ -8,6 +8,7 @@ using LifeOS.Application.Interfaces.Repositories;
 using LifeOS.Application.Interfaces.Services;
 using LifeOS.Domain.Entities;
 using LifeOS.Domain.Exceptions;
+using LifeOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace LifeOS.Application.Services;

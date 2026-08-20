@@ -2,7 +2,10 @@ import { fileURLToPath, URL } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+// defineConfig берётся из 'vitest/config', а не из 'vite': только эта версия
+// знает про секцию `test`. Отдельного vitest.config.ts нет намеренно — иначе
+// алиас `@` пришлось бы описывать дважды и однажды он разошёлся бы со сборкой.
+import { defineConfig } from 'vitest/config';
 
 /**
  * Конфигурация сборки фронтенда LifeOS.
@@ -41,5 +44,28 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+  },
+  test: {
+    // jsdom, а не node: тестируются компоненты React и tokenStore, который
+    // обращается к window.localStorage прямо на этапе загрузки модуля.
+    environment: 'jsdom',
+    globals: false, // describe/it/expect импортируются явно — так виден источник
+    setupFiles: ['./src/test/setup.ts'],
+    // Часовой пояс фиксируется, иначе тесты форматирования дат зелёные на
+    // машине разработчика и красные в CI. Взят рабочий пояс проекта (UTC+5):
+    // так проверка `isoToDatetimeLocal` действительно ловит сдвиг времени,
+    // а не проходит вырожденно из-за совпадения с UTC.
+    env: { TZ: 'Asia/Almaty' },
+    css: false, // Tailwind не влияет на поведение, а его сборка — секунды на каждый прогон
+    include: ['src/**/*.test.{ts,tsx}'],
+    restoreMocks: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      // В отчёт входит только то, что вообще имеет смысл покрывать:
+      // страницы и графики проверяются вручную, а не снимками разметки.
+      include: ['src/lib/**', 'src/schemas/**', 'src/components/ui/**'],
+      exclude: ['src/**/index.ts'],
+    },
   },
 });

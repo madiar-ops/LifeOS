@@ -33,3 +33,6 @@ dist-ssr
 
 # Кэш инкрементальной сборки TypeScript
 *.tsbuildinfo
+
+# Отчёт о покрытии тестами: генерируется командой npm run test:coverage
+coverage
