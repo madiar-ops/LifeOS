@@ -20,6 +20,10 @@ try
 
     // Полная конфигурация Serilog читается из appsettings — уровни и синки
     // меняются без пересборки образа.
+    // Конфигурация Serilog читается из appsettings.
+    // В Production файловый синк отключён (appsettings.Production.json):
+    // на PaaS файловая система эфемерна, логи собирает платформа
+    // со стандартного вывода.
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
@@ -60,15 +64,24 @@ try
     });
 
     builder.Services.AddProblemDetails();
+    builder.Services.AddRateLimiting();
+    builder.Services.AddProxyHeaders();
     builder.Services.AddSwaggerDocumentation();
     builder.Services.AddCorsPolicy(builder.Configuration);
 
     var app = builder.Build();
 
     // ---- Конвейер обработки запроса --------------------------------------
-    // Порядок критичен: обработчик исключений первым, чтобы перехватывать
-    // ошибки всех последующих компонентов.
+    // Заголовки прокси разбираются ПЕРВЫМИ: всё, что идёт следом
+    // (логи, ограничение частоты, редиректы), должно видеть реальный
+    // адрес и схему клиента, а не балансировщика.
+    app.UseForwardedHeaders();
+
+    // Обработчик исключений — чтобы перехватывать ошибки всех
+    // последующих компонентов конвейера.
     app.UseGlobalExceptionHandling();
+
+    app.UseSecurityHeaders();
 
     app.UseSerilogRequestLogging();
 
@@ -85,6 +98,10 @@ try
     }
     else
     {
+        // HSTS говорит браузеру ходить только по HTTPS в течение срока действия.
+        // Только в проде: в разработке он закешировался бы для localhost
+        // и сломал бы работу других локальных проектов по HTTP.
+        app.UseHsts();
         app.UseHttpsRedirection();
     }
 
@@ -97,6 +114,10 @@ try
     // Строго в этом порядке: сначала «кто ты», потом «что тебе можно».
     app.UseAuthentication();
     app.UseAuthorization();
+
+    // После аутентификации: лимит для авторизованных считается
+    // по идентификатору пользователя, а он появляется только здесь.
+    app.UseRateLimiter();
 
     app.MapControllers();
     app.MapHealthChecks("/health");

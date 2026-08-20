@@ -117,7 +117,7 @@ public class AuthService : IAuthService
                 "Refresh-токен скомпрометирован. Войдите заново.", "auth.token_reuse_detected");
         }
 
-        if (stored.IsExpired)
+        if (stored.IsExpiredAt(_dateTime.UtcNow))
             throw new BusinessRuleException("Срок действия refresh-токена истёк.", "auth.refresh_token_expired");
 
         var user = await _unitOfWork.Users.GetByIdAsync(stored.UserId, cancellationToken)

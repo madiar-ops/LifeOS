@@ -15,9 +15,8 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(t => t.ReplacedByToken).HasMaxLength(200);
         builder.Property(t => t.ExpiresAt).IsRequired();
 
-        // Вычисляемые свойства не хранятся в БД.
-        builder.Ignore(t => t.IsActive);
-        builder.Ignore(t => t.IsExpired);
+        // Признаки истечения и активности стали методами с явным аргументом
+        // времени, поэтому EF их не видит и Ignore не требуется.
 
         // Поиск при /auth/refresh идёт по значению токена — индекс обязателен.
         builder.HasIndex(t => t.Token).IsUnique().HasDatabaseName("IX_RefreshTokens_Token");

@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/logs/
+**/wwwroot/uploads/*
+**/.vs/
+**/*.user
+**/appsettings.*.local.json
+**/secrets.json
+**/*.md
+tests/

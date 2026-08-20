@@ -2,7 +2,6 @@ using LifeOS.Application.Interfaces.Infrastructure;
 using LifeOS.Application.Interfaces.Repositories;
 using LifeOS.Domain.Entities;
 using LifeOS.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace LifeOS.Infrastructure.Repositories;
 
@@ -15,7 +14,6 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _context;
     private readonly IDateTimeProvider _dateTime;
-    private IDbContextTransaction? _transaction;
 
     private IUserRepository? _users;
     private IRefreshTokenRepository? _refreshTokens;
@@ -54,52 +52,52 @@ public class UnitOfWork : IUnitOfWork
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         => _context.SaveChangesAsync(cancellationToken);
 
-    public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
-    {
-        if (_transaction is not null)
-            throw new InvalidOperationException("Транзакция уже открыта.");
+    public Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
+        => ExecuteInTransactionAsync<object?>(
+            async ct =>
+            {
+                await operation(ct);
+                return null;
+            },
+            cancellationToken);
 
-        _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-    }
+    public async Task<TResult> ExecuteInTransactionAsync<TResult>(
+    Func<CancellationToken, Task<TResult>> operation,
+    CancellationToken cancellationToken = default)
+{
+    var strategy = _context.Database.CreateExecutionStrategy();
 
-    public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
-    {
-        if (_transaction is null)
-            throw new InvalidOperationException("Нет открытой транзакции для фиксации.");
-
-        try
+    return await strategy.ExecuteAsync(
+        state: operation,
+        operation: async (context, operation, ct) =>
         {
-            await _context.SaveChangesAsync(cancellationToken);
-            await _transaction.CommitAsync(cancellationToken);
-        }
-        finally
-        {
-            await _transaction.DisposeAsync();
-            _transaction = null;
-        }
-    }
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(ct);
 
-    public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
+            try
+            {
+                var result = await operation(ct);
+
+                await _context.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(ct);
+                throw;
+            }
+        },
+        verifySucceeded: null,
+        cancellationToken: cancellationToken);
+}
+    public ValueTask DisposeAsync()
     {
-        if (_transaction is null) return;
-
-        try
-        {
-            await _transaction.RollbackAsync(cancellationToken);
-        }
-        finally
-        {
-            await _transaction.DisposeAsync();
-            _transaction = null;
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_transaction is not null)
-            await _transaction.DisposeAsync();
-
-        // DbContext управляется контейнером DI (Scoped), здесь его не освобождаем.
+        // Транзакции живут внутри ExecuteInTransactionAsync и освобождаются там же.
+        // DbContext управляется контейнером DI (Scoped) — здесь его не трогаем.
         GC.SuppressFinalize(this);
+        return ValueTask.CompletedTask;
     }
 }
