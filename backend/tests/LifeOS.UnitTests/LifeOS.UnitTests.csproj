@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LifeOS.UnitTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!--
+      Тестовый проект не публикует API, поэтому XML-документация ему не нужна.
+      Directory.Build.props включает её для всего решения — здесь отключаем,
+      чтобы сборка тестов не тонула в предупреждениях об отсутствующих <summary>.
+    -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LifeOS.Application\LifeOS.Application.csproj" />
+    <!--
+      Ссылка на Infrastructure нужна для тестов BCryptPasswordHasher,
+      JwtTokenGenerator и StoragePathBuilder: это реализации, а не абстракции,
+      и проверять их надо именно как реализации.
+    -->
+    <ProjectReference Include="..\..\src\LifeOS.Infrastructure\LifeOS.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!--
+      Версия FluentAssertions зафиксирована на 6.x СОЗНАТЕЛЬНО.
+      Начиная с 8.0 библиотека распространяется по коммерческой лицензии Xceed,
+      бесплатной только для проектов с открытым исходным кодом. Ветка 6.x
+      остаётся под Apache 2.0 — на ней нет юридических вопросов к дипломной работе.
+    -->
+    <PackageReference Include="FluentAssertions" Version="[6.12.2]" />
+
+    <!-- Подстановки для интерфейсов: NSubstitute читается ближе к обычному C#, чем Moq. -->
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
+
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+</Project>

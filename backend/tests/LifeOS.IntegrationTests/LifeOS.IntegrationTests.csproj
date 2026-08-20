@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LifeOS.IntegrationTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Ссылка именно на LifeOS.API, а не на Application: тесты этого проекта
+      проверяют приложение целиком — маршрутизацию, фильтр валидации,
+      middleware обработки ошибок и проверку JWT. Всё это живёт в слое API.
+    -->
+    <ProjectReference Include="..\..\src\LifeOS.API\LifeOS.API.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+    <!-- Ветка 6.x под Apache 2.0 — обоснование в LifeOS.UnitTests.csproj. -->
+    <PackageReference Include="FluentAssertions" Version="[6.12.2]" />
+
+    <!-- Поднимает приложение в памяти вместе со всем конвейером ASP.NET. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.10" />
+
+    <!--
+      Настоящий PostgreSQL в контейнере на время прогона.
+      InMemory-провайдер EF здесь не подходит принципиально: он не выполняет
+      SQL и потому не способен поймать ошибку трансляции GroupBy в
+      DashboardService — а это самый сложный запрос проекта.
+    -->
+    <PackageReference Include="Testcontainers.PostgreSql" Version="3.10.0" />
+
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
+  </ItemGroup>
+
+</Project>
