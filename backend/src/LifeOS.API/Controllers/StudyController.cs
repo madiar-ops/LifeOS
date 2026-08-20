@@ -1,3 +1,4 @@
+using LifeOS.API.Extensions;
 using LifeOS.API.Filters;
 using LifeOS.Application.Common;
 using LifeOS.Application.DTO.Ai;
@@ -6,6 +7,7 @@ using LifeOS.Application.DTO.Study;
 using LifeOS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LifeOS.API.Controllers;
 
@@ -70,6 +72,7 @@ public class StudyController : ControllerBase
     /// </summary>
     /// <response code="400">Нет текстового слоя в PDF или AI-сервис недоступен.</response>
     [HttpPost("materials/{id:guid}/summarize")]
+    [EnableRateLimiting(RateLimitingExtensions.AiPolicy)]
     [ProducesResponseType(typeof(AiResultResponse<StudySummaryResult>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AiResultResponse<StudySummaryResult>>> Summarize(
@@ -78,6 +81,7 @@ public class StudyController : ControllerBase
 
     /// <summary>Генерация теста по материалу. Требует настроенный ключ LLM в AI-сервисе.</summary>
     [HttpPost("quizzes")]
+    [EnableRateLimiting(RateLimitingExtensions.AiPolicy)]
     [ProducesResponseType(typeof(AiResultResponse<QuizResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AiResultResponse<QuizResponse>>> GenerateQuiz(

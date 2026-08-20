@@ -1,3 +1,4 @@
+using LifeOS.API.Extensions;
 using LifeOS.API.Filters;
 using LifeOS.Application.DTO.Ai;
 using LifeOS.Application.DTO.Common;
@@ -5,6 +6,7 @@ using LifeOS.Application.DTO.Finance;
 using LifeOS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LifeOS.API.Controllers;
 
@@ -69,6 +71,7 @@ public class FinanceController : ControllerBase
     /// </summary>
     /// <response code="400">Нет данных за период или AI-сервис недоступен.</response>
     [HttpGet("analysis")]
+    [EnableRateLimiting(RateLimitingExtensions.AiPolicy)]
     [ProducesResponseType(typeof(AiResultResponse<FinanceForecastResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AiResultResponse<FinanceForecastResponse>>> Analyze(

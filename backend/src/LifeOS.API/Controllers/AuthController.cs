@@ -2,8 +2,10 @@ using LifeOS.API.Filters;
 using LifeOS.Application.DTO.Auth;
 using LifeOS.Application.Interfaces.Auth;
 using LifeOS.Application.Interfaces.Infrastructure;
+using LifeOS.API.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LifeOS.API.Controllers;
 
@@ -29,6 +31,7 @@ public class AuthController : ControllerBase
     /// <response code="409">Email уже занят.</response>
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -41,6 +44,7 @@ public class AuthController : ControllerBase
     /// <response code="400">Неверный email или пароль.</response>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponse>> Login(
@@ -56,6 +60,7 @@ public class AuthController : ControllerBase
     /// <response code="400">Токен недействителен, истёк или скомпрометирован.</response>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponse>> Refresh(
