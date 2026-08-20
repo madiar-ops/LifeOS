@@ -1,6 +1,16 @@
-# Локальная инфраструктура для разработки.
-# На этом этапе поднимаем только PostgreSQL — backend и ai-service
-# запускаются из IDE, так удобнее отлаживать.
+# ============================================================
+# LifeOS — полный локальный стек
+#
+#   docker compose up --build
+#
+# Поднимает все четыре компонента: PostgreSQL, AI-сервис,
+# backend и фронтенд. Нужен для проверки того, что система
+# собирается и работает целиком, а не только из IDE.
+#
+# Для повседневной разработки удобнее поднимать одну базу
+# (docker compose up -d postgres), а сервисы запускать из IDE.
+# ============================================================
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -20,5 +30,68 @@ services:
       timeout: 5s
       retries: 5
 
+  ai-service:
+    build:
+      context: ./ai-service
+    container_name: lifeos-ai
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: Production
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?INTERNAL_API_KEY обязателен}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.60}
+    expose:
+      - "8000"
+    # Порт наружу НЕ публикуется: AI-сервис доступен только backend'у
+    # внутри сети compose. Это тот же принцип, что и в проде.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/ping', timeout=3).raise_for_status()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+    container_name: lifeos-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__DefaultConnection: >-
+        Host=postgres;Port=5432;Database=${POSTGRES_DB:-lifeos};Username=${POSTGRES_USER:-lifeos};Password=${POSTGRES_PASSWORD:-lifeos}
+      Jwt__Key: ${JWT_KEY:?JWT_KEY обязателен, минимум 32 символа}
+      Jwt__Issuer: LifeOS.API
+      Jwt__Audience: LifeOS.Client
+      AiService__BaseUrl: http://ai-service:8000
+      AiService__InternalApiKey: ${INTERNAL_API_KEY:?INTERNAL_API_KEY обязателен}
+      FileStorage__Bucket: ${FIREBASE_BUCKET:-}
+      FileStorage__CredentialsJson: ${FIREBASE_CREDENTIALS_JSON:-}
+      Cors__AllowedOrigins__0: ${FRONTEND_ORIGIN:-http://localhost:3000}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      # Локальное хранилище файлов переживает пересоздание контейнера.
+      # В проде используется Firebase — том не нужен.
+      - lifeos-uploads:/app/wwwroot/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
+    container_name: lifeos-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
 volumes:
   lifeos-pgdata:
+  lifeos-uploads:
