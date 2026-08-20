@@ -142,6 +142,21 @@ async def generate_quiz(request: QuizRequest) -> AIResponse[QuizResult]:
 def _build(
     summary: StudySummary, base_confidence: float, words: int, threshold: float
 ) -> AIResponse[StudySummary]:
+    # Пустой конспект — это не результат. Отдать его с обычной уверенностью
+    # значило бы нарушить требование MASTER_GUIDE «если AI не уверен, он
+    # сообщает об этом»: пользователь увидел бы пустое поле без объяснения.
+    if not summary.summary.strip():
+        return AIResponse[StudySummary](
+            result=summary,
+            confidence=0.0,
+            is_confident=False,
+            explanation=(
+                "Из присланного материала не удалось выделить ни одного предложения. "
+                "Проверьте, что текст извлёкся из файла корректно."
+            ),
+            model_version="study-1.0",
+        )
+
     confidence = base_confidence
 
     # Короткий текст — мало опоры для конспекта, снижаем уверенность.

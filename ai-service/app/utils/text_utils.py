@@ -17,10 +17,20 @@ SENTENCE_PATTERN = re.compile(r"(?<=[.!?…])\s+")
 WORD_PATTERN = re.compile(r"\b[\w-]{3,}\b", re.UNICODE)
 
 
+MIN_SENTENCE_LENGTH = 25
+
+
 def split_sentences(text: str) -> list[str]:
     sentences = [s.strip() for s in SENTENCE_PATTERN.split(text) if s.strip()]
+
     # Обрывки короче 25 символов обычно мусор: заголовки, номера страниц.
-    return [s for s in sentences if len(s) >= 25]
+    meaningful = [s for s in sentences if len(s) >= MIN_SENTENCE_LENGTH]
+
+    # Но если отсев не оставил ничего (материал целиком состоит из коротких
+    # тезисов — типичный конспект лекции списком), возвращать пустоту нельзя:
+    # пользователь получил бы пустой конспект вместо ответа. Откатываемся
+    # к неотфильтрованным предложениям — они всё равно из исходного текста.
+    return meaningful or sentences
 
 
 def extractive_summary(text: str, max_sentences: int = 7) -> tuple[str, list[str]]:
